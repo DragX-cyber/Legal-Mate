@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "AIzaSyBL1B8jLAg_Yhq5hesmh2P8EPdx6EEFFKs")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
     
     # Validation to ensure the app doesn't start without critical keys
     def validate(self):
