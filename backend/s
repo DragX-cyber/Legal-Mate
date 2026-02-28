@@ -1,0 +1,17 @@
+legal-ai-copilot/
+├── backend/                     # The Python FastAPI Backend
+│   ├── services/                # Logic modules (The "Brain")
+│   │   ├── ai_engine.py         # Handles Gemini API prompts & parsing
+│   │   └── pdf_utils.py         # Handles extracting text from PDF uploads
+│   ├── config.py                # Settings & Environment variables (API Keys)
+│   ├── main.py                  # API Entry point (Routes: /analyze, etc.)
+│   ├── models.py                # Pydantic models (Data validation schemas)
+│   └── requirements.txt         # Python dependencies
+│
+├── frontend/                    # The React Frontend
+│   ├── src/
+│   │   └── App.jsx              # The main UI (Chat + Analysis Dashboard)
+│   ├── public/
+│   └── package.json             # JS dependencies (React, Tailwind, Lucide)
+│
+└── .env                         # Local secrets file (Stores GEMINI_API_KEY)

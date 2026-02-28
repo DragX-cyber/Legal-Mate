@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegalMate - Legal AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .prose p {
+            margin-bottom: 0.5rem;
+        }
+
+        .prose strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .prose ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+
+<body class="bg-white font-sans text-slate-900 h-screen overflow-hidden flex">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-blue-900 flex flex-col flex-shrink-0 h-full">
+        <div class="p-6 flex items-center gap-2">
+            <i data-lucide="scale" class="text-white w-6 h-6"></i>
+            <span class="font-bold text-lg text-white">LegalMate</span>
+        </div>
+
+        <div class="px-4 mb-4">
+            <button onclick="createNewChat()"
+                class="w-full bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                New Chat
+            </button>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-1">
+            <button onclick="switchTab('chat')" id="nav-chat"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors bg-blue-800 text-white">
+                <i data-lucide="message-square" class="w-4 h-4"></i>
+                Chat
+            </button>
+            <button onclick="switchTab('contract')" id="nav-contract"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-blue-200 hover:bg-blue-800 transition-colors">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                Contract Review
+            </button>
+            <button onclick="switchTab('details')" id="nav-details"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-blue-200 hover:bg-blue-800 transition-colors">
+                <i data-lucide="user" class="w-4 h-4"></i>
+                Your Details
+            </button>
+            <button onclick="switchTab('history')" id="nav-history"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-blue-200 hover:bg-blue-800 transition-colors">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                History
+            </button>
+        </nav>
+
+        <!-- User Info Display -->
+        <div class="p-4 border-t border-blue-800">
+            <div id="user-display">
+                <p id="user-name-display" class="text-sm font-medium text-white"></p>
+                <p id="user-info-display" class="text-xs text-blue-200"></p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-white">
+        <!-- VIEW: CHAT -->
+        <div id="view-chat" class="flex flex-col h-full">
+            <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-6 pb-24">
+                <div class="flex justify-start">
+                    <div class="flex max-w-[90%] md:max-w-[80%] gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="scale" class="w-4 h-4 text-blue-600"></i>
+                        </div>
+                        <div
+                            class="p-4 rounded-lg bg-slate-100 text-slate-800 text-sm shadow-sm border border-slate-200">
+                            Hello! I'm LegalMate, your legal assistant. How can I help you today?
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 bg-white">
+                <div class="max-w-4xl mx-auto">
+                    <div
+                        class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 transition-all shadow-sm">
+                        <input type="file" id="chat-file-input" class="hidden"
+                            onchange="handleFileUpload(this.files[0], 'chat')">
+                        <button onclick="document.getElementById('chat-file-input').click()"
+                            class="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
+                            title="Upload Contract">
+                            <i data-lucide="paperclip" class="w-5 h-5"></i>
+                        </button>
+
+                        <input type="text" id="chat-input" placeholder="Ask your legal question..."
+                            class="flex-1 bg-transparent border-none outline-none text-slate-700 placeholder-slate-400 text-sm h-10"
+                            onkeypress="if(event.key === 'Enter') sendMessage()">
+
+                        <button onclick="sendMessage()"
+                            class="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <p class="text-xs text-slate-400">LegalMate provides general legal information, not legal
+                            advice. Consult a licensed attorney for specific legal matters.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: CONTRACT REVIEW -->
+        <div id="view-contract" class="hidden h-full flex-col bg-white overflow-hidden">
+            <div class="p-6 h-full overflow-y-auto">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="file-text" class="w-10 h-10 text-blue-600"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold text-slate-900 mb-2">Contract Review</h1>
+                        <p class="text-slate-600">Upload your contract for AI-powered analysis. Get risk assessments,
+                            clause breakdowns, and recommendations.</p>
+                    </div>
+
+                    <div class="bg-white border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
+                        <div class="mb-4">
+                            <i data-lucide="upload" class="w-16 h-16 text-slate-400 mx-auto"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-800 mb-2">Upload Contract</h3>
+                        <p class="text-sm text-slate-600 mb-4">Supported formats: PDF, TXT • Maximum file size: 10MB</p>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-12 mb-4">
+                            <i data-lucide="arrow-up" class="w-12 h-12 text-slate-400 mx-auto mb-3"></i>
+                            <p class="text-slate-700 font-medium mb-2">Drag & drop your contract here</p>
+                            <p class="text-xs text-slate-500">or click to browse • PDF, DOC, DOCX • Max 10MB</p>
+                        </div>
+                        <input type="file" id="contract-file-input" class="hidden" accept=".pdf,.doc,.docx,.txt"
+                            onchange="handleContractFileSelect(this)">
+                        <div class="flex gap-3 justify-center">
+                            <button onclick="document.getElementById('contract-file-input').click()"
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                                Choose File
+                            </button>
+                            <button id="analyze-btn" onclick="analyzeContract()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled>
+                                <i data-lucide="scan-text" class="w-4 h-4 inline mr-2"></i>
+                                Analyze
+                            </button>
+                        </div>
+                        <p id="contract-file-name" class="text-sm text-slate-600 mt-3"></p>
+                    </div>
+
+                    <div id="contract-loader" class="hidden flex flex-col items-center justify-center py-20">
+                        <div class="loader mb-4"></div>
+                        <p class="text-slate-500">Analyzing contract...</p>
+                    </div>
+
+                    <div id="contract-results"
+                        class="hidden border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white mt-6">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm uppercase tracking-wider">
+                                    <th class="px-6 py-4 font-semibold w-12">#</th>
+                                    <th class="px-6 py-4 font-semibold w-48">Clause Type</th>
+                                    <th class="px-6 py-4 font-semibold w-32">Risk</th>
+                                    <th class="px-6 py-4 font-semibold min-w-[300px]">Text</th>
+                                    <th class="px-6 py-4 font-semibold min-w-[300px]">Reasons</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contract-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: YOUR DETAILS -->
+        <div id="view-details" class="hidden h-full flex-col bg-white overflow-hidden">
+            <div class="p-6 h-full overflow-y-auto">
+                <div class="max-w-2xl mx-auto">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="user" class="w-10 h-10 text-blue-600"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold text-slate-900 mb-2">Your Details</h1>
+                        <p class="text-slate-600">Tell us about yourself so LegalMate can provide personalized legal
+                            assistance.</p>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                        <form id="details-form" class="space-y-6">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-slate-700 mb-2">Full
+                                    Name</label>
+                                <input type="text" id="name"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    placeholder="John Doe">
+                            </div>
+
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-slate-700 mb-2">Email
+                                    (Optional)</label>
+                                <input type="email" id="email"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    placeholder="your@email.com">
+                            </div>
+
+                            <div>
+                                <label for="industry"
+                                    class="block text-sm font-medium text-slate-700 mb-2">Industry</label>
+                                <input type="text" id="industry"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    placeholder="e.g., SaaS, Construction, Healthcare">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="role" class="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                                    <select id="role"
+                                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                        <option value="">Select...</option>
+                                        <option value="Vendor">Vendor</option>
+                                        <option value="Client">Client</option>
+                                        <option value="Contractor">Contractor</option>
+                                        <option value="Employee">Employee</option>
+                                        <option value="Freelancer">Freelancer</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="risk-tolerance"
+                                        class="block text-sm font-medium text-slate-700 mb-2">Risk Tolerance</label>
+                                    <select id="risk-tolerance"
+                                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                        <option value="">Select...</option>
+                                        <option value="Conservative">Conservative (Low Risk)</option>
+                                        <option value="Moderate">Moderate</option>
+                                        <option value="Aggressive">Aggressive (High Risk)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="details-success"
+                                class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                            </div>
+
+                            <button type="submit"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                                Save Details
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: HISTORY -->
+        <div id="view-history" class="hidden h-full flex-col bg-white overflow-hidden">
+            <div class="p-6 h-full overflow-y-auto">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="clock" class="w-10 h-10 text-blue-600"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold text-slate-900 mb-2">Chat History</h1>
+                        <p class="text-slate-600">View and manage your past conversations.</p>
+                    </div>
+
+                    <div id="history-content">
+                        <div class="text-center py-12">
+                            <i data-lucide="message-square" class="w-16 h-16 text-slate-300 mx-auto mb-4"></i>
+                            <p class="text-slate-500 mb-4">No conversations yet. Start chatting to see your history
+                                here.</p>
+                            <button onclick="switchTab('chat')"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                                Start a new chat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        let currentContractContext = "";
+        let chatHistory = [];
+        let selectedFile = null;
+        let userDetails = {};
+
+        // Load user details on startup
+        window.onload = function () {
+            loadUserDetails();
+            lucide.createIcons();
+        };
+
+        function loadUserDetails() {
+            const saved = localStorage.getItem('LegalMate_user_details');
+            if (saved) {
+                userDetails = JSON.parse(saved);
+                // Populate form
+                if (userDetails.name) document.getElementById('name').value = userDetails.name;
+                if (userDetails.email) document.getElementById('email').value = userDetails.email;
+                if (userDetails.industry) document.getElementById('industry').value = userDetails.industry;
+                if (userDetails.role) document.getElementById('role').value = userDetails.role;
+                if (userDetails.risk_tolerance) document.getElementById('risk-tolerance').value = userDetails.risk_tolerance;
+
+                // Update sidebar display
+                updateUserDisplay();
+            }
+        }
+
+        function updateUserDisplay() {
+            const nameEl = document.getElementById('user-name-display');
+            const infoEl = document.getElementById('user-info-display');
+
+            if (userDetails.name) {
+                nameEl.textContent = userDetails.name;
+                const infoParts = [];
+                if (userDetails.industry) infoParts.push(userDetails.industry);
+                if (userDetails.role) infoParts.push(userDetails.role);
+                infoEl.textContent = infoParts.join(' • ') || 'Update your details';
+            } else {
+                nameEl.textContent = 'Guest User';
+                infoEl.textContent = 'Click "Your Details" to set up';
+            }
+        }
+
+        document.getElementById('details-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            userDetails = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                industry: document.getElementById('industry').value,
+                role: document.getElementById('role').value,
+                risk_tolerance: document.getElementById('risk-tolerance').value
+            };
+
+            localStorage.setItem('LegalMate_user_details', JSON.stringify(userDetails));
+
+            const successDiv = document.getElementById('details-success');
+            successDiv.textContent = 'Details saved successfully!';
+            successDiv.classList.remove('hidden');
+
+            updateUserDisplay();
+
+            setTimeout(() => {
+                successDiv.classList.add('hidden');
+            }, 3000);
+        });
+
+        function switchTab(tab) {
+            const chatView = document.getElementById('view-chat');
+            const contractView = document.getElementById('view-contract');
+            const detailsView = document.getElementById('view-details');
+            const historyView = document.getElementById('view-history');
+            const navChat = document.getElementById('nav-chat');
+            const navContract = document.getElementById('nav-contract');
+            const navDetails = document.getElementById('nav-details');
+            const navHistory = document.getElementById('nav-history');
+
+            // Hide all views
+            chatView.classList.add('hidden');
+            contractView.classList.add('hidden');
+            detailsView.classList.add('hidden');
+            historyView.classList.add('hidden');
+
+            // Reset nav styles
+            [navChat, navContract, navDetails, navHistory].forEach(nav => {
+                nav.classList.remove('bg-blue-800', 'text-white');
+                nav.classList.add('text-blue-200');
+            });
+
+            if (tab === 'chat') {
+                chatView.classList.remove('hidden');
+                navChat.classList.add('bg-blue-800', 'text-white');
+                navChat.classList.remove('text-blue-200');
+            } else if (tab === 'contract') {
+                contractView.classList.remove('hidden');
+                navContract.classList.add('bg-blue-800', 'text-white');
+                navContract.classList.remove('text-blue-200');
+            } else if (tab === 'details') {
+                detailsView.classList.remove('hidden');
+                navDetails.classList.add('bg-blue-800', 'text-white');
+                navDetails.classList.remove('text-blue-200');
+            } else if (tab === 'history') {
+                historyView.classList.remove('hidden');
+                navHistory.classList.add('bg-blue-800', 'text-white');
+                navHistory.classList.remove('text-blue-200');
+            }
+
+            lucide.createIcons();
+        }
+
+        function createNewChat() {
+            chatHistory = [];
+            currentContractContext = "";
+            document.getElementById('chat-container').innerHTML = `
+                <div class="flex justify-start">
+                    <div class="flex max-w-[90%] md:max-w-[80%] gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="scale" class="w-4 h-4 text-blue-600"></i>
+                        </div>
+                        <div class="p-4 rounded-lg bg-slate-100 text-slate-800 text-sm shadow-sm border border-slate-200">
+                            Hello! I'm LegalMate, your legal assistant. How can I help you today?
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+            switchTab('chat');
+        }
+
+        function appendMessage(text, type, isFile = false) {
+            const container = document.getElementById('chat-container');
+            const isUser = type === 'user';
+
+            chatHistory.push({ role: isUser ? 'user' : 'model', content: text });
+
+            const displayContent = isUser ? text : marked.parse(text);
+
+            const msgHTML = `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in">
+                    <div class="flex max-w-[90%] md:max-w-[80%] gap-3 ${isUser ? 'flex-row-reverse' : ''}">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-slate-200 ${isUser ? 'bg-blue-600 border-none' : 'bg-blue-100'}">
+                            ${isUser ? '<i data-lucide="user" class="w-4 h-4 text-white"></i>' : '<i data-lucide="scale" class="w-4 h-4 text-blue-600"></i>'}
+                        </div>
+                        <div class="p-4 rounded-lg text-sm shadow-sm border border-slate-200 ${isUser ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'} prose ${isUser ? 'prose-invert' : ''}">
+                            ${isFile ? '<i data-lucide="file-text" class="inline w-4 h-4 mr-2"></i>' : ''}
+                            ${displayContent}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = msgHTML;
+            container.appendChild(tempDiv.firstElementChild);
+            lucide.createIcons();
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            appendMessage(message, 'user');
+            input.value = '';
+
+            const loadingId = 'loading-' + Date.now();
+            const container = document.getElementById('chat-container');
+            const loaderHTML = `
+                <div id="${loadingId}" class="flex justify-start">
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 border border-slate-200 flex items-center justify-center">
+                            <div class="loader" style="width:14px; height:14px; border-width:2px;"></div>
+                        </div>
+                        <div class="p-4 rounded-lg bg-slate-100 text-slate-500 text-sm">Thinking...</div>
+                    </div>
+                </div>`;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = loaderHTML;
+            container.appendChild(tempDiv.firstElementChild);
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                const effectiveContext = currentContractContext || "General legal assistant context.";
+                const recentHistory = chatHistory.slice(-10);
+
+                // Prepare user details for API
+                const userDetailsForAPI = {};
+                if (userDetails.name) userDetailsForAPI.name = userDetails.name;
+                if (userDetails.industry) userDetailsForAPI.industry = userDetails.industry;
+                if (userDetails.role) userDetailsForAPI.role = userDetails.role;
+                if (userDetails.risk_tolerance) userDetailsForAPI.risk_tolerance = userDetails.risk_tolerance;
+
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: recentHistory,
+                        contract_context: effectiveContext,
+                        user_details: Object.keys(userDetailsForAPI).length > 0 ? userDetailsForAPI : null
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
+                }
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+                appendMessage(data.response, 'bot');
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById(loadingId).remove();
+                appendMessage("I apologize, but I encountered an error processing your request. Please try again.", 'bot');
+            }
+        }
+
+        function handleFileUpload(file, source) {
+            if (!file) return;
+            if (source === 'chat') {
+                appendMessage(`Uploaded: ${file.name}`, 'user', true);
+                selectedFile = file;
+
+                // Sync with Contract Review UI
+                document.getElementById('contract-file-name').textContent = `Selected: ${selectedFile.name}`;
+                document.getElementById('analyze-btn').disabled = false;
+                document.getElementById('contract-results').classList.add('hidden');
+
+                analyzeContractForChat();
+            }
+        }
+
+        function handleContractFileSelect(input) {
+            if (input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                document.getElementById('contract-file-name').textContent = `Selected: ${selectedFile.name}`;
+                document.getElementById('analyze-btn').disabled = false;
+                document.getElementById('contract-results').classList.add('hidden');
+            }
+        }
+
+        async function analyzeContractForChat() {
+            if (!selectedFile) return;
+
+            appendMessage("Analyzing document structure... please wait.", 'bot');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('industry', userDetails.industry || 'General');
+            formData.append('risk_tolerance', userDetails.risk_tolerance || 'Moderate');
+            formData.append('role', userDetails.role || 'Client');
+
+            try {
+                const response = await fetch(`${API_URL}/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Analysis failed');
+                }
+
+                const data = await response.json();
+                currentContractContext = data.contract_text || JSON.stringify(data);
+
+                // Populate the Contract Review page table
+                renderContractResults(data);
+                document.getElementById('contract-results').classList.remove('hidden');
+
+                const summaryMsg = `**Analysis Complete**\n**Risk Score:** ${data.overall_risk_score}/100\n**Summary:** ${data.summary}\n\nI found **${data.clauses.length} clauses** of interest.`;
+                appendMessage(summaryMsg, 'bot');
+
+            } catch (error) {
+                console.error(error);
+                appendMessage("Error analyzing file. Please try again.", 'bot');
+            }
+        }
+
+        async function analyzeContract() {
+            if (!selectedFile) {
+                alert('Please select a file first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('industry', userDetails.industry || 'General');
+            formData.append('risk_tolerance', userDetails.risk_tolerance || 'Moderate');
+            formData.append('role', userDetails.role || 'Client');
+
+            document.getElementById('contract-loader').classList.remove('hidden');
+            document.getElementById('contract-results').classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_URL}/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Analysis failed');
+                }
+
+                const data = await response.json();
+
+                if (data.contract_text) {
+                    currentContractContext = data.contract_text;
+                }
+
+                renderContractResults(data);
+
+                document.getElementById('contract-loader').classList.add('hidden');
+                document.getElementById('contract-results').classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('contract-loader').classList.add('hidden');
+                alert('Error analyzing contract. Please try again.');
+            }
+        }
+
+        function renderContractResults(data) {
+            const tbody = document.getElementById('contract-table-body');
+            tbody.innerHTML = '';
+
+            if (!data.clauses || data.clauses.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No clauses found.</td></tr>';
+                return;
+            }
+
+            data.clauses.forEach((clause, index) => {
+                const riskColor =
+                    clause.risk_level === 'High' ? 'bg-red-100 text-red-700 border-red-200' :
+                        clause.risk_level === 'Medium' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                            'bg-green-100 text-green-700 border-green-200';
+
+                const row = `
+                    <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none">
+                        <td class="px-6 py-4 text-slate-500">${index + 1}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${clause.clause_type}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold border ${riskColor}">
+                                ${clause.risk_level}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 text-xs font-mono bg-slate-50/50 leading-relaxed max-w-xs break-words">
+                            "${clause.text_snippet}"
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 leading-relaxed">
+                            ${clause.reasoning}
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+    </script>
+</body>
+
+</html>
