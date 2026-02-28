@@ -33,8 +33,8 @@ LegalMate is an AI-powered legal assistant web application that helps users anal
 
 ### 1. Clone the repository
 ```bash
-git clone <repository-url>
-cd "Law ai"
+git clone https://github.com/DragX-cyber/Legal-Mate.git
+cd "Legal-Mate"
 ```
 
 ### 2. Backend Setup
@@ -98,3 +98,6 @@ A comprehensive `.gitignore` has been included in the repository root to omit:
 - Environment variable files (`.env`)
 - Local SQLite databases (`lexai.db`)
 - Assorted OS-specific and editor-specific files (`.DS_Store`, `.vscode`, `__pycache__`)
+
+
+This is a Capstone Project
